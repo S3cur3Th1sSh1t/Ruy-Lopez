@@ -6,7 +6,7 @@
 This repository contains the Proof-of-Concept for a new approach to prevent DLLs from being loaded into a newly spawned process.
 The initial use-case idea was to block AV/EDR vendor DLLs from being loaded, so that userland hooking based detections are bypassed.
 
-The workflow of the PoC looks as follows:
+<ins>The workflow of the PoC looks as follows:</ins>
 
 <p align="center">
 <img src="https://github.com/S3cur3Th1sSh1t/Ruy-Lopez/blob/main/images/Idea.png" alt="Workflow" width="700" height="450">
@@ -14,15 +14,22 @@ The workflow of the PoC looks as follows:
 
 The SubFolder `HookForward` contains the actual PIC-Code which can be used as EntryPoint for a hooked `NtCreateSection` function. `Blockdll.nim` on the other hand side spawns a new Powershell process in suspended mode, injects the shellcode into that process and remotely hooks `NtCreateSecion` to `JMP` to our shellcode. As this is a PoC, *only* `amsi.dll` is being blocked in the new in this case Powershell process, which effectively leads to an AMSI bypass. But the PoC was also tested against multiple EDR vendors and their DLLs without throwing an alert or without being blocked **before** releasing it. I expect detections to come up afterwards.
 
+## Challenges / Limitations
+
+- When customizing this PoC, you can only use `ntdll.dll` functions in the PIC-Code, as the process is not fully initialized yet when the hook occurs and therefore only `ntdll.dll` is loaded. Other DLLs also cannot be loaded by the shellcode, because process initialization has to take place first.
+- This PoC can only prevent DLLs from being loaded which are not injected but instead loaded normally. Some vendors inject specific or single DLLs.
+
 ## Setup
 
-You need to have [Nim](https://nim-lang.org/) installed for testing. After doing that, the dependencies can be installed via the following oneliner:
+You need to have [Nim](https://nim-lang.org/) installed for testing.
+
+<ins>After doing that, the dependencies can be installed via the following oneliner:</ins>
 
 ```nim
 nimble install winim
 ```
 
-The PoC can than be compiled with:
+<ins>The PoC can than be compiled with:</ins>
 
 ```nim
 nim c -d:release BlockDll.nim
