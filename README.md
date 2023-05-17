@@ -9,7 +9,7 @@ The initial use-case idea was to block AV/EDR vendor DLLs from being loaded, so 
 The workflow of the PoC looks as follows:
 
 <p align="center">
-<img src="https://github.com/S3cur3Th1sSh1t/Ruy-Lopez/blob/main/images/Idea.png" alt="Workflow" width="400" height="400">
+<img src="https://github.com/S3cur3Th1sSh1t/Ruy-Lopez/blob/main/images/Idea.png" alt="Workflow" width="300" height="450">
 </p>
 
 The SubFolder `HookForward` contains the actual PIC-Code which can be used as EntryPoint for a hooked `NtCreateSection` function. `Blockdll.nim` on the other hand side spawns a new Powershell process in suspended mode, injects the shellcode into that process and remotely hooks `NtCreateSecion` to `JMP` to our shellcode. As this is a PoC, *only* `amsi.dll` is being blocked in the new in this case Powershell process, which effectively leads to an AMSI bypass. But the PoC was also tested against multiple EDR vendors and their DLLs without throwing an alert or without being blocked **before** releasing it. I expect detections to come up afterwards.
