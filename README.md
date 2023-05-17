@@ -1,1 +1,45 @@
 # Ruy-Lopez
+
+![alt text](https://raw.githubusercontent.com/S3cur3Th1sSh1t/Ruy-Lopez/main/images/Ruy_Lopez_Opening.jpg)
+
+This repository contains the Proof-of-Concept for a new approach to prevent DLLs from being loaded into a newly spawned process.
+The initial use-case idea was to block AV/EDR vendor DLLs from being loaded, so that userland hooking based detections are bypassed.
+
+The workflow of the PoC looks as follows:
+
+![alt text](https://raw.githubusercontent.com/S3cur3Th1sSh1t/Ruy-Lopez/main/images/Idea.png)
+
+The SubFolder `HookForward` contains the actual PIC-Code which can be used as EntryPoint for a hooked `NtCreateSection` function. `Blockdll.nim` on the other hand side spawns a new Powershell process in suspended mode, injects the shellcode into that process and remotely hooks `NtCreateSecion` to `JMP` to our shellcode. As this is a PoC, *only* `amsi.dll` is being blocked in the new in this case Powershell process, which effectively leads to an AMSI bypass. But the PoC was also tested against multiple EDR vendors and their DLLs without throwing an alert or without being blocked **before** releasing it. I expect detections to come up afterwards.
+
+## Setup
+
+You need to have [Nim](https://nim-lang.org/) installed for testing. After doing that, the dependencies can be installed via the following oneliner:
+
+```nim
+nimble install winim
+```
+
+The PoC can than be compiled with:
+
+```nim
+nim c -d:release BlockDll.nim
+```
+
+![alt text](https://raw.githubusercontent.com/S3cur3Th1sSh1t/Ruy-Lopez/main/images/PoC.png)
+
+
+## OPSec improvement ideas
+
+- Userland-hook evasion for injection from the host process
+- RX Shellcode (needs some PIC-code changes)
+- RX permissions for the hooked function
+- Use hashing instead of plain APIs to block
+- Use hardware breakpoints instead of hooking
+
+## CREDITS
+
+- [Ceri Coburn](https://twitter.com/_EthicalChaos_) - Help all over the PoC
+- [Sven Rath](https://twitter.com/eversinc33) - General idea, review and initial PoC inspiration
+- [Alejandro Pinna](https://twitter.com/frodosobon) - Initial idea came after reading [his blogpost](https://waawaa.github.io/es/amsi_bypass-hooking-NtCreateSection/) 
+- [Charles Hamilton](https://twitter.com/MrUn1k0d3r) - QA help when writing PIC code
+- [Chetan Nayak](https://twitter.com/NinjaParanoid) - QA help when writing PIC code
