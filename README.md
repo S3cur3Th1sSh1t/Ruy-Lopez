@@ -4,7 +4,7 @@
 <img src="https://github.com/S3cur3Th1sSh1t/Ruy-Lopez/blob/main/images/Ruy_Lopez_Opening.jpg?raw=true" alt="Ruy Lopez Opening" width="400" height="400">
 </p>
 
-Endpoint Detection and Response systems (EDRs) are like the white player in a Chess game [^1]:
+Endpoint Detection and Response systems (EDRs) are like the white player in a Chess game: [^1]
 - They do the first move with hooks loaded directly via the kernel
 - The EDR DLL is loaded directly after `ntdll.dll`
 
@@ -65,4 +65,6 @@ nim c -d:release BlockDll.nim
 - [Sven Rath](https://twitter.com/eversinc33) - General idea, review and initial PoC inspiration
 - [Alejandro Pinna](https://twitter.com/frodosobon) - Initial idea came after reading [his blogpost](https://waawaa.github.io/es/amsi_bypass-hooking-NtCreateSection/) 
 - [Charles Hamilton](https://twitter.com/MrUn1k0d3r) - QA help when writing PIC code
-- [Chetan Nayak](https://twitter.com/NinjaParanoid) - QA help when writing PIC code + the Chess idea ( [^1]: https://bruteratel.com/release/2022/08/18/Release-Scandinavian-Defense/ )
+- [Chetan Nayak](https://twitter.com/NinjaParanoid) - QA help when writing PIC code + the Chess idea
+
+[^1]: https://bruteratel.com/release/2022/08/18/Release-Scandinavian-Defense/
