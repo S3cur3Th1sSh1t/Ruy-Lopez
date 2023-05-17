@@ -6,7 +6,7 @@
 This repository contains the Proof-of-Concept for a new approach to prevent DLLs from being loaded into a newly spawned process.
 The initial use-case idea was to block AV/EDR vendor DLLs from being loaded, so that userland hooking based detections are bypassed.
 
-</br>
+</br></br>
 <ins>The simnplified workflow of the PoC looks as follows:</ins>
 
 <p align="center">
