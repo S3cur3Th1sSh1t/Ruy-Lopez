@@ -3,6 +3,16 @@
 <p align="center">
 <img src="https://github.com/S3cur3Th1sSh1t/Ruy-Lopez/blob/main/images/Ruy_Lopez_Opening.jpg?raw=true" alt="Ruy Lopez Opening" width="400" height="400">
 </p>
+
+Endpoint Detection and Response systems (EDRs) are like the white player in a Chess game [^1]:
+- They do the first move with hooks loaded directly via the kernel
+- The EDR DLL is loaded directly after `ntdll.dll`
+
+But what if we can prevent their DLL from being loaded at all? Do we get the white player and can do the first moves (in a new process at least)? 
+
+![grafik](https://github.com/S3cur3Th1sSh1t/Ruy-Lopez/assets/27858067/4b6a1105-f7e0-4c0c-826f-a54136af2337)
+
+
 This repository contains the Proof-of-Concept(PoC) for a new approach to prevent DLLs from being loaded into a newly spawned process.
 The initial use-case idea was to block AV/EDR vendor DLLs from being loaded, so that userland hooking based detections are bypassed.
 
@@ -55,4 +65,4 @@ nim c -d:release BlockDll.nim
 - [Sven Rath](https://twitter.com/eversinc33) - General idea, review and initial PoC inspiration
 - [Alejandro Pinna](https://twitter.com/frodosobon) - Initial idea came after reading [his blogpost](https://waawaa.github.io/es/amsi_bypass-hooking-NtCreateSection/) 
 - [Charles Hamilton](https://twitter.com/MrUn1k0d3r) - QA help when writing PIC code
-- [Chetan Nayak](https://twitter.com/NinjaParanoid) - QA help when writing PIC code
+- [Chetan Nayak](https://twitter.com/NinjaParanoid) - QA help when writing PIC code + the Chess idea ( [^1]: https://bruteratel.com/release/2022/08/18/Release-Scandinavian-Defense/ )
