@@ -3,7 +3,7 @@
 <p align="center">
 <img src="https://github.com/S3cur3Th1sSh1t/Ruy-Lopez/blob/main/images/Ruy_Lopez_Opening.jpg?raw=true" alt="Ruy Lopez Opening" width="400" height="400">
 </p>
-This repository contains the Proof-of-Concept for a new approach to prevent DLLs from being loaded into a newly spawned process.
+This repository contains the Proof-of-Concept(PoC) for a new approach to prevent DLLs from being loaded into a newly spawned process.
 The initial use-case idea was to block AV/EDR vendor DLLs from being loaded, so that userland hooking based detections are bypassed.
 
 </br></br>
