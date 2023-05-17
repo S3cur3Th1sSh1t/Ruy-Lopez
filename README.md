@@ -1,8 +1,6 @@
 # Ruy-Lopez
 
-![alt text](https://github.com/S3cur3Th1sSh1t/Ruy-Lopez/blob/main/images/Ruy_Lopez_Opening.jpg?raw=true)
-
-[<img src="https://github.com/S3cur3Th1sSh1t/Ruy-Lopez/blob/main/images/Ruy_Lopez_Opening.jpg?raw=true" alt="Ruy Lopez Opening" width="400" height="400">]
+<img src="https://github.com/S3cur3Th1sSh1t/Ruy-Lopez/blob/main/images/Ruy_Lopez_Opening.jpg?raw=true" alt="Ruy Lopez Opening" width="400" height="400" class="center">
 
 This repository contains the Proof-of-Concept for a new approach to prevent DLLs from being loaded into a newly spawned process.
 The initial use-case idea was to block AV/EDR vendor DLLs from being loaded, so that userland hooking based detections are bypassed.
