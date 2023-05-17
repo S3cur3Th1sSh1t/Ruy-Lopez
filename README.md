@@ -7,7 +7,7 @@ This repository contains the Proof-of-Concept for a new approach to prevent DLLs
 The initial use-case idea was to block AV/EDR vendor DLLs from being loaded, so that userland hooking based detections are bypassed.
 
 </br></br>
-<ins>The simnplified workflow of the PoC looks as follows:</ins>
+<ins>The simplified workflow of the PoC looks as follows:</ins>
 
 <p align="center">
 <img src="https://github.com/S3cur3Th1sSh1t/Ruy-Lopez/blob/main/images/Idea.png" alt="Workflow" width="700" height="450">
