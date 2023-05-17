@@ -7,9 +7,9 @@
 Endpoint Detection and Response systems (EDRs) are like the white player in a Chess game:
 
 - They do the first move with hooks loaded directly via the kernel
-- The EDR DLL is loaded directly after `ntdll.dll`
+- The EDR DLL is typically loaded directly after `ntdll.dll`
 
-But what if we can prevent their DLL from being loaded at all? Do we get the white player and can do the first moves (in a new process at least)? 
+But what if we can prevent their DLL from being loaded at all? Do we get the white player and can do the first moves (in the new process at least)? 
 
 
 
