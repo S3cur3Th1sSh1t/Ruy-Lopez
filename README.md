@@ -4,13 +4,13 @@
 <img src="https://github.com/S3cur3Th1sSh1t/Ruy-Lopez/blob/main/images/Ruy_Lopez_Opening.jpg?raw=true" alt="Ruy Lopez Opening" width="400" height="400">
 </p>
 
-Endpoint Detection and Response systems (EDRs) are like the white player in a Chess game: 
+Endpoint Detection and Response systems (EDRs) are like the white player in a Chess game:
+
 - They do the first move with hooks loaded directly via the kernel
 - The EDR DLL is loaded directly after `ntdll.dll`
 
 But what if we can prevent their DLL from being loaded at all? Do we get the white player and can do the first moves (in a new process at least)? 
 
-![grafik](https://github.com/S3cur3Th1sSh1t/Ruy-Lopez/assets/27858067/4b6a1105-f7e0-4c0c-826f-a54136af2337)
 
 
 This repository contains the Proof-of-Concept(PoC) for a new approach to prevent DLLs from being loaded into a newly spawned process.
