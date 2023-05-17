@@ -29,7 +29,7 @@ nim c -d:release BlockDll.nim
 ```
 
 <p align="center">
-<img src="https://github.com/S3cur3Th1sSh1t/Ruy-Lopez/blob/main/images/PoC.png" alt="PoC" width="400" height="400">
+<img src="https://github.com/S3cur3Th1sSh1t/Ruy-Lopez/blob/main/images/PoC.png" alt="PoC">
 </p>
 
 
