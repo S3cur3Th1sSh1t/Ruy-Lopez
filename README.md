@@ -9,11 +9,11 @@ Endpoint Detection and Response systems (EDRs) are like the white player in a Ch
 - They do the first move with hooks loaded directly via the kernel
 - The EDR DLL is typically loaded directly after `ntdll.dll`
 
-But what if we can prevent their DLL from being loaded at all? Do we get the white player and can do the first moves (in the new process at least)? 
+But what if we can prevent their DLL from being loaded at all? Do we get the white player and can do the first moves (for the new process at least)? 
 
 
 
-This repository contains the Proof-of-Concept(PoC) for a new approach to prevent DLLs from being loaded into a newly spawned process.
+This repository contains the Proof-of-Concept(PoC) for a new approach to completely prevent DLLs from being loaded into a newly spawned process.
 The initial use-case idea was to block AV/EDR vendor DLLs from being loaded, so that userland hooking based detections are bypassed.
 
 </br></br>
@@ -23,7 +23,7 @@ The initial use-case idea was to block AV/EDR vendor DLLs from being loaded, so 
 <img src="https://github.com/S3cur3Th1sSh1t/Ruy-Lopez/blob/main/images/Idea.png" alt="Workflow" width="700" height="450">
 </p>
 
-The SubFolder `HookForward` contains the actual PIC-Code which can be used as EntryPoint for a hooked `NtCreateSection` function. `Blockdll.nim` on the other hand side spawns a new Powershell process in suspended mode, injects the shellcode into that process and remotely hooks `NtCreateSecion` to `JMP` to our shellcode. As this is a PoC, *only* `amsi.dll` is being blocked in the new in this case Powershell process, which effectively leads to an AMSI bypass. But the PoC was also tested against multiple EDR vendors and their DLLs without throwing an alert or without being blocked **before** releasing it. I expect detections to come up afterwards.
+The SubFolder `HookForward` contains the actual PIC-Code which can be used as EntryPoint for a hooked `NtCreateSection` function. `Blockdll.nim` on the other hand side spawns a new Powershell process in suspended mode, injects the shellcode into that process and remotely hooks `NtCreateSecion` to `JMP` to our shellcode. As this is a PoC, *only* `amsi.dll` is being blocked in the new in this case Powershell process, which effectively leads to an AMSI bypass. But the PoC was also tested against multiple EDR vendors and their DLLs without throwing an alert or without being blocked **before** releasing it. I expect detections to come up after releasing it here.
 
 ## Challenges / Limitations
 
