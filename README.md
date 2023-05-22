@@ -32,11 +32,22 @@ The SubFolder `HookForward` contains the actual PIC-Code which can be used as En
 
 ## Setup
 
-The PIC-Code was found to be compiled correctly with mingw-gcc version `gcc version 10-win32 20220324 (GCC)`. Newer versions did lead to crashes.
+On linux, the PIC-Code was found to be compiled correctly with `mingw-w64` version `version 10-win32 20220324 (GCC)`. With that version installed, the shellcode can be compiled with a simple `make` and extracted from the `.text` section via `bash extract.sh`. Newer `mingw-w64` versions, such as 12 did lead to crashes for me, which I'm currently not planning to troubleshoot/fix.
 
-You need to have [Nim](https://nim-lang.org/) installed for testing.
+If you'd like to compile from Windows, you can use the following commands:
 
-<ins>After doing that, the dependencies can be installed via the following oneliner:</ins>
+```powershell
+as -o directjump.o directjump_as.asm
+gcc ApiResolve.c -Wall -m64 -ffunction-sections -fno-asynchronous-unwind-tables -nostdlib -fno-ident -O2 -c -o ApiResolve.o -Wl,--no-seh
+gcc HookShellcode.c -Wall -m64 -masm=intel -ffunction-sections -fno-asynchronous-unwind-tables -nostdlib -fno-ident -O2 -c -o HookShellcode.o -Wl,--no-seh
+ld -s directjump.o ApiResolve.o HookShellcode.o -o HookShellcode.exe
+gcc extract.c -o extract.exe
+extract.exe
+```
+
+You also need to have [Nim](https://nim-lang.org/) installed for this PoC.
+
+<ins>After installation, the dependencies can be installed via the following oneliner:</ins>
 
 ```nim
 nimble install winim
@@ -45,7 +56,8 @@ nimble install winim
 <ins>The PoC can than be compiled with:</ins>
 
 ```nim
-nim c -d:release BlockDll.nim
+nim c -d:release -d=mingw BlockDll.nim # Cross compile
+nim c -d:release BlockDll.nim # Windows
 ```
 
 <p align="center">
@@ -57,7 +69,6 @@ nim c -d:release BlockDll.nim
 
 - Userland-hook evasion for injection from the host process
 - RX Shellcode (needs some PIC-code changes)
-- RX permissions for the hooked function
 - Use hashing instead of plain APIs to block
 - Use hardware breakpoints instead of hooking
 
