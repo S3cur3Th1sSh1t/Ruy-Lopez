@@ -139,7 +139,7 @@ echo ""
 
 # Time to resume the process
 
-Sleep(1000)
+Sleep(3000)
 
 echo "[*] Resuming the process"
 ResumeThread(tHandle)

