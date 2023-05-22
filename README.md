@@ -32,6 +32,8 @@ The SubFolder `HookForward` contains the actual PIC-Code which can be used as En
 
 ## Setup
 
+The PIC-Code was found to be compiled correctly with mingw-gcc version `gcc version 10-win32 20220324 (GCC)`. Newer versions did lead to crashes.
+
 You need to have [Nim](https://nim-lang.org/) installed for testing.
 
 <ins>After doing that, the dependencies can be installed via the following oneliner:</ins>
