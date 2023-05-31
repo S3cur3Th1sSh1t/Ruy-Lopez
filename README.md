@@ -56,7 +56,7 @@ nimble install winim
 <ins>The PoC can than be compiled with:</ins>
 
 ```nim
-nim c -d:release -d=mingw BlockDll.nim # Cross compile
+nim c -d:release -d=mingw -d:noRes BlockDll.nim # Cross compile
 nim c -d:release BlockDll.nim # Windows
 ```
 
